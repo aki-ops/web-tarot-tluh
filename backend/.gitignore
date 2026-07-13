@@ -8,3 +8,6 @@ node_modules
 # SQLite database files
 *.db
 *.db-journal
+
+# Build output
+dist/
