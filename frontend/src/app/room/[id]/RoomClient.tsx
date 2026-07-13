@@ -126,6 +126,21 @@ export default function RoomClient({ roomId, cards }: RoomClientProps) {
 
     peerConnections.current[targetSocketId] = pc;
 
+    pc.onconnectionstatechange = () => {
+      console.log(`WebRTC Connection State với ${targetSocketId}: ${pc.connectionState}`);
+      if (pc.connectionState === 'connected') {
+        addSystemMessage('Đã thiết lập đàm thoại thành công.');
+      } else if (pc.connectionState === 'failed') {
+        addSystemMessage('Kết nối đàm thoại thất bại (bị NAT/Firewall chặn).');
+      } else if (pc.connectionState === 'disconnected') {
+        addSystemMessage('Đã ngắt kết nối đàm thoại.');
+      }
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      console.log(`WebRTC ICE Connection State với ${targetSocketId}: ${pc.iceConnectionState}`);
+    };
+
     // Thêm các track local vào peer
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => {
