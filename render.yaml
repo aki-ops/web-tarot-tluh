@@ -1,0 +1,34 @@
+services:
+  # 1. Backend Service (NestJS Server)
+  - type: web
+    name: web-tarot-backend
+    env: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: PORT
+        value: 3001
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        value: file:./prisma/dev.db
+      - key: JWT_SECRET
+        value: "Thay_The_Bang_Chuoi_Bi_Mat_Cua_Ban_O_Day_123456"
+
+  # 2. Frontend Service (Next.js App)
+  - type: web
+    name: web-tarot-frontend
+    env: node
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        value: "https://web-tarot-backend.onrender.com/api/v1" # Thay bằng URL backend thực tế của bạn sau khi deploy
