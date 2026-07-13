@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Card {
+  id                    String   @id @default(uuid())
+  slug                  String   @unique
+  arcanaType            String   @map("arcana_type") // "major" | "minor"
+  suit                  String?  // "wands" | "cups" | "swords" | "pentacles" | null
+  number                String
+  nameEn                String   @map("name_en")
+  nameVi                String   @map("name_vi")
+  imageUrl              String   @map("image_url")
+  keywords              Json     // string[]
+  actionGroups          Json     @map("action_groups") // {title: string, items: string[]}[]
+  quickMeaning          String   @map("quick_meaning") // 1-2 lines
+  detailedDescription   String   @map("detailed_description") // Short summary
+  uprightMeaning        String   @map("upright_meaning")
+  reversedMeaning       String?  @map("reversed_meaning")
+  opposingCardSlugs     Json     @map("opposing_card_slugs") // string[]
+  supportingCardSlugs   Json     @map("supporting_card_slugs") // string[]
+  sourceUrl             String   @map("source_url")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@map("cards")
+}
+
+model User {
+  id           String            @id @default(uuid())
+  email        String            @unique
+  nickname     String            @unique
+  password     String
+  avatarUrl    String?           @map("avatar_url")
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
+  rooms        Room[]            @relation("HostUser")
+  participants RoomParticipant[]
+  draws        Draw[]
+
+  @@map("users")
+}
+
+model Room {
+  id           String            @id @default(uuid())
+  name         String
+  code         String            @unique
+  hostId       String            @map("host_id")
+  host         User              @relation("HostUser", fields: [hostId], references: [id])
+  createdAt    DateTime          @default(now()) @map("created_at")
+  participants RoomParticipant[]
+  draws        Draw[]
+
+  @@map("rooms")
+}
+
+model RoomParticipant {
+  id        String   @id @default(uuid())
+  roomId    String   @map("room_id")
+  room      Room     @relation(fields: [roomId], references: [id])
+  userId    String?  @map("user_id")
+  user      User?    @relation(fields: [userId], references: [id])
+  tempName  String?  @map("temp_name")
+  socketId  String?  @map("socket_id")
+  joinedAt  DateTime @default(now()) @map("joined_at")
+
+  @@map("room_participants")
+}
+
+model Draw {
+  id        String   @id @default(uuid())
+  type      String   // "three_card" | "single_card"
+  intent    String?  // "today" | "what_to_do" | "what_should_do" | null
+  cards     Json     // {position: string, card_id: string, is_reversed: boolean}[]
+  userId    String?  @map("user_id")
+  user      User?    @relation(fields: [userId], references: [id])
+  roomId    String?  @map("room_id")
+  room      Room?    @relation(fields: [roomId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("draws")
+}

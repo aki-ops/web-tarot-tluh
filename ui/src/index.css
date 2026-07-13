@@ -1,0 +1,132 @@
+@import url('https://fonts.googleapis.com/css2?family=Jost:wght@100;200;300;400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --sky-light: #E4F3F8;
+    --sky-primary: #AFD9EA;
+    --blush: #F2CBD8;
+    --sage: #C3DFC8;
+    --cream: #FBF4E8;
+    --ink: #3E4258;
+
+    --background: 199 52% 94%;
+    --foreground: 232 15% 30%;
+    --card: 40 67% 96%;
+    --card-foreground: 232 15% 30%;
+    --popover: 40 67% 96%;
+    --popover-foreground: 232 15% 30%;
+    --primary: 199 42% 74%;
+    --primary-foreground: 232 15% 20%;
+    --secondary: 339 62% 88%;
+    --secondary-foreground: 232 15% 30%;
+    --muted: 199 52% 90%;
+    --muted-foreground: 232 10% 50%;
+    --accent: 130 29% 82%;
+    --accent-foreground: 232 15% 30%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 199 42% 80%;
+    --input: 199 42% 80%;
+    --ring: 199 42% 65%;
+    --radius: 0.75rem;
+    --sidebar-background: 40 67% 96%;
+    --sidebar-foreground: 232 15% 30%;
+    --sidebar-primary: 199 42% 74%;
+    --sidebar-primary-foreground: 232 15% 20%;
+    --sidebar-accent: 130 29% 82%;
+    --sidebar-accent-foreground: 232 15% 30%;
+    --sidebar-border: 199 42% 80%;
+    --sidebar-ring: 199 42% 65%;
+  }
+
+  .dark {
+    --background: 232 15% 10%;
+    --foreground: 199 52% 90%;
+    --card: 232 15% 15%;
+    --card-foreground: 199 52% 90%;
+    --popover: 232 15% 15%;
+    --popover-foreground: 199 52% 90%;
+    --primary: 199 42% 74%;
+    --primary-foreground: 232 15% 10%;
+    --secondary: 339 30% 30%;
+    --secondary-foreground: 339 62% 88%;
+    --muted: 232 15% 20%;
+    --muted-foreground: 199 20% 60%;
+    --accent: 130 20% 30%;
+    --accent-foreground: 130 29% 82%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 232 15% 25%;
+    --input: 232 15% 25%;
+    --ring: 199 42% 65%;
+    --radius: 0.75rem;
+    --sidebar-background: 232 15% 12%;
+    --sidebar-foreground: 199 52% 90%;
+    --sidebar-primary: 199 42% 74%;
+    --sidebar-primary-foreground: 232 15% 10%;
+    --sidebar-accent: 130 20% 30%;
+    --sidebar-accent-foreground: 130 29% 82%;
+    --sidebar-border: 232 15% 25%;
+    --sidebar-ring: 199 42% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Jost', sans-serif;
+  }
+}
+
+@keyframes cardJitter {
+  0%, 100% { transform: translateX(0) rotateZ(0deg) rotateY(0deg); }
+  10% { transform: translateX(-3px) rotateZ(-1deg) rotateY(-3deg); }
+  20% { transform: translateX(3px) rotateZ(1.5deg) rotateY(2deg); }
+  30% { transform: translateX(-2px) rotateZ(-0.5deg) rotateY(-4deg); }
+  40% { transform: translateX(4px) rotateZ(2deg) rotateY(3deg); }
+  50% { transform: translateX(-3px) rotateZ(-1.5deg) rotateY(-2deg); }
+  60% { transform: translateX(2px) rotateZ(0.8deg) rotateY(4deg); }
+  70% { transform: translateX(-4px) rotateZ(-2deg) rotateY(-1deg); }
+  80% { transform: translateX(3px) rotateZ(1deg) rotateY(2deg); }
+  90% { transform: translateX(-2px) rotateZ(-0.8deg) rotateY(-3deg); }
+}
+
+.card-jitter {
+  animation: cardJitter 0.4s ease-in-out infinite;
+}
+
+@keyframes spiralFloat {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.card-flip {
+  transform-style: preserve-3d;
+  transition: transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.card-flip.flipped {
+  transform: rotateY(180deg);
+}
+
+.card-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.card-back-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: rotateY(180deg);
+}
