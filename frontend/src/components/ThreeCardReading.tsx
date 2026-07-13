@@ -305,14 +305,14 @@ export default function ThreeCardReading({ cards }: ThreeCardReadingProps) {
         </div>
 
         {/* Khối Tooltip Chỉ dẫn và Nút Hành động kết hợp giúp tiết kiệm chiều cao */}
-        <div className="flex flex-col items-center gap-3 z-20 w-full mt-2 shrink-0">
+        <div className="flex flex-col items-center gap-2 z-20 w-full mt-1 shrink-0">
           {/* Dải Tooltip Đen */}
-          <div className="flex justify-center h-12 items-center">
+          <div className="flex justify-center h-8 items-center">
             <motion.div
               key={getGuidanceMessage(phase, drawn, allDrawn)}
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="rounded-full bg-black px-12 py-3 text-center text-sm md:text-base tracking-[0.08em] font-medium text-white shadow-xl font-sans"
+              className="rounded-full bg-black px-6 py-1.5 text-center text-xs tracking-[0.08em] font-medium text-white shadow-md font-sans"
             >
               {getGuidanceMessage(phase, drawn, allDrawn)}
             </motion.div>
