@@ -513,7 +513,7 @@ export default function RoomClient({ roomId, cards }: RoomClientProps) {
                     {[...Array(6)].map((_, i) => (
                       <div
                         key={i}
-                        className={`absolute bottom-0 left-0 h-[var(--card-h)] w-[var(--card-w)] ${
+                        className={`absolute bottom-0 left-0 h-[var(--card-h)] w-[var(--card-w)] pointer-events-none ${
                           i % 2 === 0 ? 'anim-shuffle-left' : 'anim-shuffle-right'
                         }`}
                         style={{
