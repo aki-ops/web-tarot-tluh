@@ -13,7 +13,7 @@ import {
 } from '@dnd-kit/core';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
-import { saveDraw } from '@/lib/api';
+import { saveDraw, fetchCards } from '@/lib/api';
 import { cleanMeaningText, type ReadingPosition, type TarotCard } from '@/types/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -62,7 +62,21 @@ interface ThreeCardReadingProps {
 
 export default function ThreeCardReading({ cards }: ThreeCardReadingProps) {
   const [phase, setPhase] = useState<Phase>('idle');
+  const [localCards, setLocalCards] = useState<TarotCard[]>(cards);
   const [fanCards, setFanCards] = useState<TarotCard[]>([]);
+
+  useEffect(() => {
+    if (localCards.length === 0) {
+      fetchCards()
+        .then((data) => {
+          if (data && data.length > 0) {
+            setLocalCards(data);
+          }
+        })
+        .catch((err) => console.error('Failed to fetch cards client-side:', err));
+    }
+  }, [localCards.length]);
+
   const [drawn, setDrawn] = useState<Record<ReadingPosition, TarotCard | null>>({
     past: null,
     present: null,
@@ -89,14 +103,14 @@ export default function ThreeCardReading({ cards }: ThreeCardReadingProps) {
   const mixingLayers = useMemo(() => Array.from({ length: 12 }), []);
 
   const shuffleDeck = useCallback(() => {
-    return [...cards].sort(() => Math.random() - 0.5);
-  }, [cards]);
+    return [...localCards].sort(() => Math.random() - 0.5);
+  }, [localCards]);
 
   useEffect(() => {
-    if (cards.length > 0 && fanCards.length === 0 && phase === 'idle') {
+    if (localCards.length > 0 && fanCards.length === 0 && phase === 'idle') {
       setFanCards(shuffleDeck().slice(0, FAN_SIZE));
     }
-  }, [cards, fanCards.length, phase, shuffleDeck]);
+  }, [localCards, fanCards.length, phase, shuffleDeck]);
 
   const allDrawn = Boolean(drawn.past && drawn.present && drawn.future);
   const activeSlot: ReadingPosition | null = !drawn.past

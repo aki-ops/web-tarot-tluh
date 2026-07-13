@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { saveDraw } from '@/lib/api';
+import { saveDraw, fetchCards } from '@/lib/api';
 import { cleanMeaningText, type TarotCard } from '@/types/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +26,20 @@ interface QuickReadingProps {
 export default function QuickReading({ cards }: QuickReadingProps) {
   const [intent, setIntent] = useState<Intent>('today');
   const [phase, setPhase] = useState<'idle' | 'mixing' | 'drawn'>('idle');
+  const [localCards, setLocalCards] = useState<TarotCard[]>(cards);
+
+  useEffect(() => {
+    if (localCards.length === 0) {
+      fetchCards()
+        .then((data) => {
+          if (data && data.length > 0) {
+            setLocalCards(data);
+          }
+        })
+        .catch((err) => console.error('Failed to fetch cards client-side:', err));
+    }
+  }, [localCards.length]);
+
   const [drawnCard, setDrawnCard] = useState<TarotCard | null>(null);
   const [isReversed, setIsReversed] = useState(false);
   const [isRevealed, setIsRevealed] = useState(false);
@@ -41,9 +55,9 @@ export default function QuickReading({ cards }: QuickReadingProps) {
   };
 
   const stopShufflingAndDraw = async () => {
-    if (cards.length === 0) return;
+    if (localCards.length === 0) return;
 
-    const card = cards[Math.floor(Math.random() * cards.length)];
+    const card = localCards[Math.floor(Math.random() * localCards.length)];
     const cardReversed = Math.random() > 0.5;
 
     setDrawnCard(card);
