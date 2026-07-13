@@ -153,8 +153,9 @@ export default function ThreeCardReading({ cards }: ThreeCardReadingProps) {
     setReversed((p) => ({ ...p, [position]: Math.random() > 0.5 }));
   };
 
-  const revealAll = async () => {
-    if (!allDrawn) return;
+  const revealAll = useCallback(async () => {
+    const isAllDrawn = Boolean(drawn.past && drawn.present && drawn.future);
+    if (!isAllDrawn) return;
     setRevealed({ past: true, present: true, future: true });
     setPhase('revealed');
     setSaveStatus('saving');
@@ -172,7 +173,16 @@ export default function ThreeCardReading({ cards }: ThreeCardReadingProps) {
       console.error('Failed to save draw:', e);
       setSaveStatus('error');
     }
-  };
+  }, [drawn, reversed]);
+
+  // Tự động kích hoạt revealAll khi cả 3 lá bài đều được bốc và đều được lật ngửa
+  useEffect(() => {
+    const isAllDrawn = Boolean(drawn.past && drawn.present && drawn.future);
+    const isAllRevealed = Boolean(revealed.past && revealed.present && revealed.future);
+    if (isAllDrawn && isAllRevealed && phase === 'fanout') {
+      revealAll();
+    }
+  }, [drawn, revealed, phase, revealAll]);
 
   const resetReading = () => {
     setDrawn({ past: null, present: null, future: null });
@@ -214,10 +224,10 @@ export default function ThreeCardReading({ cards }: ThreeCardReadingProps) {
 
   return (
     <div
-      className={`relative flex w-full flex-col items-center px-4 z-10 gap-8 md:gap-12 lg:gap-14 ${
+      className={`relative flex w-full flex-col items-center px-4 z-10 gap-4 md:gap-6 lg:gap-8 ${
         phase === 'revealed'
-          ? 'min-h-[calc(100dvh-4rem)] pb-32 pt-24 justify-start'
-          : 'min-h-[calc(100dvh-4rem)] pb-12 pt-24 justify-center'
+          ? 'min-h-[calc(100dvh-4rem)] pb-24 pt-16 justify-start'
+          : 'min-h-[calc(100dvh-4rem)] pb-6 pt-16 justify-center'
       }`}
     >
       {/* Background textures */}
@@ -245,15 +255,20 @@ export default function ThreeCardReading({ cards }: ThreeCardReadingProps) {
         transition={{ duration: 0.6, ease: "easeOut" }}
         className="text-center shrink-0 mb-1"
       >
-        <h1 className="font-sans text-4xl tracking-[0.45em] font-bold text-ink uppercase md:text-5xl lg:text-6xl">TAROT</h1>
-        <p className="mt-2 text-xs tracking-[0.4em] text-ink/40 font-semibold uppercase">REVEAL YOUR PATH</p>
-        <h2 className="font-serif text-3xl text-ink mt-4 font-normal tracking-wide md:text-4xl">{title}</h2>
-        <p className="text-sm md:text-base text-ink/75 mt-2 max-w-2xl mx-auto leading-relaxed">{subtitle}</p>
-        <div className="flex items-center justify-center gap-3 mt-4">
-          <div className="w-10 h-[1px] bg-ink/20" />
-          <div className="text-sm text-ink/40">✦</div>
-          <div className="w-10 h-[1px] bg-ink/20" />
-        </div>
+        <h1 className="font-sans text-3xl tracking-[0.45em] font-bold text-ink uppercase md:text-4xl lg:text-5xl">TAROT</h1>
+        <p className="mt-1 text-[10px] tracking-[0.4em] text-ink/40 font-semibold uppercase">REVEAL YOUR PATH</p>
+        <h2 className="font-serif text-2xl text-ink mt-3 font-normal tracking-wide md:text-3xl">{title}</h2>
+        
+        {(phase === 'idle' || phase === 'revealed') && (
+          <>
+            <p className="text-xs md:text-sm text-ink/75 mt-1.5 max-w-2xl mx-auto leading-relaxed">{subtitle}</p>
+            <div className="flex items-center justify-center gap-3 mt-3">
+              <div className="w-8 h-[1px] bg-ink/20" />
+              <div className="text-xs text-ink/40">✦</div>
+              <div className="w-8 h-[1px] bg-ink/20" />
+            </div>
+          </>
+        )}
       </motion.div>
 
       <DndContext
