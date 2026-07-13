@@ -137,8 +137,8 @@
 .fan-container {
   position: relative;
   width: 100%;
-  height: 175px;
-  margin-top: 10px;
+  height: 120px;
+  margin-top: 5px;
   /* Thay thế overflow: hidden bằng clip-path mở rộng 3 hướng để không bị cắt xén khi kéo bài lên */
   clip-path: inset(-1000px -1000px 0px -1000px);
   display: flex;
@@ -149,15 +149,15 @@
 
 @media (min-width: 768px) {
   .fan-container {
-    height: 245px;
-    margin-top: 15px;
+    height: 180px;
+    margin-top: 5px;
   }
 }
 
 @media (min-width: 1200px) {
   .fan-container {
-    height: 280px;
-    margin-top: 20px;
+    height: 200px;
+    margin-top: 5px;
   }
 }
 

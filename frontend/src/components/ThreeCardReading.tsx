@@ -224,10 +224,10 @@ export default function ThreeCardReading({ cards }: ThreeCardReadingProps) {
 
   return (
     <div
-      className={`relative flex w-full flex-col items-center px-4 z-10 gap-4 md:gap-6 lg:gap-8 ${
+      className={`relative flex w-full flex-col items-center px-4 z-10 gap-2 md:gap-3 lg:gap-4 ${
         phase === 'revealed'
-          ? 'min-h-[calc(100dvh-4rem)] pb-24 pt-16 justify-start'
-          : 'min-h-[calc(100dvh-4rem)] pb-6 pt-16 justify-center'
+          ? 'min-h-[calc(100dvh-4rem)] pb-20 pt-4 justify-start'
+          : 'min-h-[calc(100dvh-4rem)] pb-4 pt-4 justify-center'
       }`}
     >
       {/* Background textures */}

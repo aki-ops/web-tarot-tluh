@@ -55,8 +55,8 @@ export function CardSlot({
           isOver && 'shadow-lg scale-[1.02]'
         )}
         style={{
-          width: 'clamp(130px, 20vw, 200px)',
-          height: 'clamp(220px, 34vw, 340px)',
+          width: 'clamp(100px, 15vw, 160px)',
+          height: 'clamp(170px, 25vw, 272px)',
           background: 'rgba(242, 242, 242, 0.65)',
           boxShadow: isOver
             ? 'inset 0 4px 20px rgba(0,0,0,0.1), inset 0 -2px 8px rgba(255,255,255,0.8), 0 0 15px rgba(0,0,0,0.05)'
