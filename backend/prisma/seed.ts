@@ -4,7 +4,15 @@ import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const dbPath = path.resolve(__dirname, '../dev.db');
+let dbPath = path.resolve(__dirname, '../dev.db');
+if (process.env.DATABASE_URL) {
+  const cleanUrl = process.env.DATABASE_URL.replace('file:', '');
+  if (cleanUrl.startsWith('.')) {
+    dbPath = path.resolve(process.cwd(), cleanUrl);
+  } else {
+    dbPath = cleanUrl;
+  }
+}
 const adapter = new PrismaBetterSqlite3({ url: dbPath });
 const prisma = new PrismaClient({ adapter });
 
