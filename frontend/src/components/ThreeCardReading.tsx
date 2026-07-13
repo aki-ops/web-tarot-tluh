@@ -10,6 +10,7 @@ import {
   useSensor,
   useSensors,
   closestCenter,
+  rectIntersection,
 } from '@dnd-kit/core';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
@@ -32,6 +33,16 @@ import { ReadingResult } from '@/components/reading/ReadingResult';
 const FAN_SIZE = 22;
 
 type Phase = 'idle' | 'mixing' | 'fanout' | 'revealed';
+
+// Thuật toán va chạm lai ghép: ưu tiên diện tích đè lên nhiều nhất (rectIntersection),
+// nếu không đè lên ô nào thì dùng khoảng cách gần nhất (closestCenter) để làm mốc rơi.
+const customCollisionDetection = (args: any) => {
+  const rectCollisions = rectIntersection(args);
+  if (rectCollisions.length > 0) {
+    return rectCollisions;
+  }
+  return closestCenter(args);
+};
 
 function DroppableSlot({
   position,
@@ -273,7 +284,7 @@ export default function ThreeCardReading({ cards }: ThreeCardReadingProps) {
 
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={customCollisionDetection}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
