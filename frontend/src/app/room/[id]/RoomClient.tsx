@@ -261,8 +261,10 @@ export default function RoomClient({ roomId, cards }: RoomClientProps) {
   useEffect(() => {
     const token = localStorage.getItem('token') || '';
     
-    // Kết nối đến backend socket namespace mặc định
-    const newSocket = io('http://localhost:3001');
+    const socketUrl = process.env.NEXT_PUBLIC_API_URL
+      ? process.env.NEXT_PUBLIC_API_URL.replace('/api/v1', '').replace('/api', '')
+      : 'http://localhost:3001';
+    const newSocket = io(socketUrl);
     setSocket(newSocket);
 
     // Bắt đầu nạp âm thanh local

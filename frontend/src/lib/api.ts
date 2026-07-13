@@ -1,8 +1,21 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 export function getApiUrl(path: string): string {
-  const normalized = path.startsWith('/') ? path : `/${path}`;
-  return `${API_BASE}${normalized}`;
+  let base = API_BASE.trim();
+  if (base.endsWith('/')) {
+    base = base.slice(0, -1);
+  }
+  let cleanPath = path.trim();
+  if (!cleanPath.startsWith('/')) {
+    cleanPath = `/${cleanPath}`;
+  }
+  if (base.endsWith('/api/v1') && cleanPath.startsWith('/api/v1/')) {
+    cleanPath = cleanPath.substring(7);
+    if (!cleanPath.startsWith('/')) {
+      cleanPath = `/${cleanPath}`;
+    }
+  }
+  return `${base}${cleanPath}`;
 }
 
 export async function fetchCards() {
