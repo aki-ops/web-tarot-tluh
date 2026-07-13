@@ -127,18 +127,27 @@ export default function RoomClient({ roomId, cards }: RoomClientProps) {
     peerConnections.current[targetSocketId] = pc;
 
     pc.onconnectionstatechange = () => {
-      console.log(`WebRTC Connection State với ${targetSocketId}: ${pc.connectionState}`);
-      if (pc.connectionState === 'connected') {
-        addSystemMessage('Đã thiết lập đàm thoại thành công.');
-      } else if (pc.connectionState === 'failed') {
-        addSystemMessage('Kết nối đàm thoại thất bại (bị NAT/Firewall chặn).');
-      } else if (pc.connectionState === 'disconnected') {
-        addSystemMessage('Đã ngắt kết nối đàm thoại.');
+      const state = pc.connectionState;
+      console.log(`WebRTC Connection State với ${targetSocketId}: ${state}`);
+      if (state === 'connecting') {
+        addSystemMessage('Đang thiết lập đàm thoại...');
+      } else if (state === 'connected') {
+        addSystemMessage('Đã kết nối đàm thoại thành công! 🎤');
+      } else if (state === 'failed') {
+        addSystemMessage('Kết nối đàm thoại thất bại (bị Firewall/NAT chặn).');
+      } else if (state === 'disconnected') {
+        addSystemMessage('Đàm thoại bị ngắt kết nối.');
       }
     };
 
     pc.oniceconnectionstatechange = () => {
-      console.log(`WebRTC ICE Connection State với ${targetSocketId}: ${pc.iceConnectionState}`);
+      const iceState = pc.iceConnectionState;
+      console.log(`WebRTC ICE State với ${targetSocketId}: ${iceState}`);
+      if (iceState === 'checking') {
+        addSystemMessage('Đang dò tìm đường truyền (ICE Checking)...');
+      } else if (iceState === 'failed') {
+        addSystemMessage('Không thể đàm thoại trực tiếp (Yêu cầu TURN Server).');
+      }
     };
 
     // Thêm các track local vào peer
