@@ -490,7 +490,20 @@ export default function RoomClient({ roomId, cards }: RoomClientProps) {
       <div className="grid w-full max-w-6xl grid-cols-1 lg:grid-cols-4 gap-8 items-start">
         
         {/* Cột Trái/Bảng Chính: Chứa 5 ô bốc bài Tarot */}
-        <div className="lg:col-span-3 flex flex-col items-center gap-8">
+        <div className="lg:col-span-3 flex flex-col items-center gap-8 relative">
+          
+          {/* Nút Trải lại đặt ở phía trên các ô bài để tránh bị che bởi các lá bài xòe ra */}
+          {isAllowedToDraw && (phase === 'fanout' || allDrawn) && (
+            <div className="w-full flex justify-end -mb-4">
+              <Button
+                variant="pill"
+                onClick={handleReset}
+                className="h-9 px-4 text-xs font-semibold flex items-center gap-1.5 bg-cream/70 hover:bg-cream border border-ink/10 shadow-sm transition-colors"
+              >
+                <RefreshCw className="h-3.5 w-3.5" /> Trải lại
+              </Button>
+            </div>
+          )}
           
           {/* Khu vực 5 ô bài Tarot */}
           <div className="flex w-full justify-center gap-3 sm:gap-4 md:gap-5 flex-wrap min-h-[220px]">
@@ -596,15 +609,7 @@ export default function RoomClient({ roomId, cards }: RoomClientProps) {
                   </div>
                 )}
 
-                {(phase === 'fanout' || allDrawn) && (
-                  <Button
-                    variant="pill"
-                    onClick={handleReset}
-                    className="absolute right-4 bottom-4 h-9 px-4 text-xs font-semibold flex items-center gap-1.5"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" /> Trải lại
-                  </Button>
-                )}
+                {/* Nút Trải lại đã được chuyển lên đầu bảng chính để tránh bị che khuất */}
               </>
             ) : (
               // Bảng chờ của người xem (Querent)
