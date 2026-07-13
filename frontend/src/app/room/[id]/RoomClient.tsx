@@ -44,6 +44,7 @@ export default function RoomClient({ roomId, cards }: RoomClientProps) {
   const [fanCards, setFanCards] = useState<TarotCard[]>([]);
 
   // Refs quản lý WebRTC
+  const socketRef = useRef<Socket | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const peerConnections = useRef<Record<string, RTCPeerConnection>>({});
   const audioElements = useRef<Record<string, HTMLAudioElement>>({});
@@ -134,7 +135,7 @@ export default function RoomClient({ roomId, cards }: RoomClientProps) {
 
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        socket?.emit('webrtc-signal', {
+        socketRef.current?.emit('webrtc-signal', {
           targetSocketId,
           signalData: { candidate: event.candidate },
         });
@@ -159,14 +160,14 @@ export default function RoomClient({ roomId, cards }: RoomClientProps) {
     if (initiate) {
       pc.createOffer().then((offer) => {
         pc.setLocalDescription(offer).then(() => {
-          socket?.emit('webrtc-signal', {
+          socketRef.current?.emit('webrtc-signal', {
             targetSocketId,
             signalData: { offer },
           });
         });
       });
     }
-  }, [socket]);
+  }, []);
 
   // Xử lý khi bật/tắt Mic
   const toggleMute = () => {
@@ -267,6 +268,7 @@ export default function RoomClient({ roomId, cards }: RoomClientProps) {
       ? process.env.NEXT_PUBLIC_API_URL.replace('/api/v1', '').replace('/api', '')
       : 'http://localhost:3001';
     const newSocket = io(socketUrl);
+    socketRef.current = newSocket;
     setSocket(newSocket);
 
     // Bắt đầu nạp âm thanh local
