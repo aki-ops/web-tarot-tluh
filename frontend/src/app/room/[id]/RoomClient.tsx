@@ -152,6 +152,9 @@ export default function RoomClient({ roomId, cards }: RoomClientProps) {
           const audio = new Audio();
           audio.srcObject = remoteStream;
           audio.autoplay = true;
+          // Thêm thuộc tính ẩn và đưa vào DOM để trình duyệt cho phép phát tiếng
+          audio.style.display = 'none';
+          document.body.appendChild(audio);
           audioElements.current[targetSocketId] = audio;
         }
       }
@@ -267,120 +270,144 @@ export default function RoomClient({ roomId, cards }: RoomClientProps) {
     const socketUrl = process.env.NEXT_PUBLIC_API_URL
       ? process.env.NEXT_PUBLIC_API_URL.replace('/api/v1', '').replace('/api', '')
       : 'http://localhost:3001';
-    const newSocket = io(socketUrl);
-    socketRef.current = newSocket;
-    setSocket(newSocket);
 
-    // Bắt đầu nạp âm thanh local
-    initAudio();
+    let activeSocket: Socket | null = null;
 
-    newSocket.on('connect', () => {
-      newSocket.emit('join-room', { roomCode: roomId, token });
-    });
+    // Khởi chạy tuần tự: Nạp mic xong mới bắt đầu nối socket để tránh race-condition
+    initAudio().finally(() => {
+      // Force websocket transport để tránh bị đứt kết nối khi người dùng ẩn tab/chuyển tab
+      const newSocket = io(socketUrl, { transports: ['websocket'] });
+      activeSocket = newSocket;
+      socketRef.current = newSocket;
+      setSocket(newSocket);
 
-    newSocket.on('error', (err: string) => {
-      setErrorMsg(err);
-      newSocket.disconnect();
-    });
+      newSocket.on('connect', () => {
+        newSocket.emit('join-room', { roomCode: roomId, token });
+      });
 
-    newSocket.on('sys-message', (data: { type: string; message: string }) => {
-      addSystemMessage(data.message);
-    });
+      newSocket.on('error', (err: string) => {
+        setErrorMsg(err);
+        newSocket.disconnect();
+      });
 
-    newSocket.on('picker-delegated', (data: { allowedSocketId: string | null }) => {
-      setAllowedPickerSocketId(data.allowedSocketId);
-    });
+      newSocket.on('sys-message', (data: { type: string; message: string }) => {
+        addSystemMessage(data.message);
+      });
 
-    // Cập nhật danh sách người tham gia & Setup WebRTC đàm thoại
-    newSocket.on('room-state', (peersList: Participant[]) => {
-      setParticipants(peersList);
+      newSocket.on('picker-delegated', (data: { allowedSocketId: string | null }) => {
+        setAllowedPickerSocketId(data.allowedSocketId);
+      });
 
-      // Thiết lập kết nối thoại mesh WebRTC
-      peersList.forEach((peer) => {
-        if (peer.socketId !== newSocket.id) {
-          // Trình kết nối: Client có socketId lớn hơn sẽ gửi Offer chủ động
-          const initiate = newSocket.id! > peer.socketId;
-          createPeerConnection(peer.socketId, initiate);
+      // Cập nhật danh sách người tham gia & Setup WebRTC đàm thoại
+      newSocket.on('room-state', (peersList: Participant[]) => {
+        setParticipants(peersList);
+
+        const activeSocketIds = new Set(peersList.map((p) => p.socketId));
+
+        // Dọn dẹp những peer đã rời phòng khỏi WebRTC và DOM
+        Object.keys(peerConnections.current).forEach((socketId) => {
+          if (!activeSocketIds.has(socketId)) {
+            peerConnections.current[socketId].close();
+            delete peerConnections.current[socketId];
+            
+            if (audioElements.current[socketId]) {
+              audioElements.current[socketId].remove();
+              delete audioElements.current[socketId];
+            }
+          }
+        });
+
+        // Thiết lập kết nối thoại mesh WebRTC cho peer mới
+        peersList.forEach((peer) => {
+          if (peer.socketId !== newSocket.id) {
+            const initiate = newSocket.id! > peer.socketId;
+            createPeerConnection(peer.socketId, initiate);
+          }
+        });
+      });
+
+      // Broker tín hiệu WebRTC thoại
+      newSocket.on('webrtc-signal', (data: { senderSocketId: string; signalData: any }) => {
+        const { senderSocketId, signalData } = data;
+        let pc = peerConnections.current[senderSocketId];
+
+        if (!pc) return;
+
+        if (signalData.offer) {
+          pc.setRemoteDescription(new RTCSessionDescription(signalData.offer)).then(() => {
+            pc.createAnswer().then((answer) => {
+              pc.setLocalDescription(answer).then(() => {
+                newSocket.emit('webrtc-signal', {
+                  targetSocketId: senderSocketId,
+                  signalData: { answer },
+                });
+              });
+            });
+          });
+        } else if (signalData.answer) {
+          pc.setRemoteDescription(new RTCSessionDescription(signalData.answer));
+        } else if (signalData.candidate) {
+          pc.addIceCandidate(new RTCIceCandidate(signalData.candidate));
+        }
+      });
+
+      // Chỉ báo nói chuyện
+      newSocket.on('speaking-state', (data: { socketId: string; isSpeaking: boolean }) => {
+        setSpeakingPeers((prev) => ({
+          ...prev,
+          [data.socketId]: data.isSpeaking,
+        }));
+      });
+
+      // Đồng bộ Tarot Board từ Reader
+      newSocket.on('draw-action', (action: any) => {
+        if (action.type === 'mixing') {
+          setPhase('mixing');
+          setDrawn([null, null, null, null, null]);
+          setReversed([false, false, false, false, false]);
+          setRevealed([false, false, false, false, false]);
+        } else if (action.type === 'fanout') {
+          setPhase('fanout');
+          setFanCards(action.fanCards);
+        } else if (action.type === 'place_card') {
+          setDrawn((prev) => {
+            const next = [...prev];
+            next[action.slotIndex] = action.card;
+            return next;
+          });
+          setReversed((prev) => {
+            const next = [...prev];
+            next[action.slotIndex] = action.isReversed;
+            return next;
+          });
+        } else if (action.type === 'reveal_card') {
+          setRevealed((prev) => {
+            const next = [...prev];
+            next[action.slotIndex] = !next[action.slotIndex];
+            return next;
+          });
+        } else if (action.type === 'reset') {
+          setPhase('idle');
+          setDrawn([null, null, null, null, null]);
+          setReversed([false, false, false, false, false]);
+          setRevealed([false, false, false, false, false]);
+          setFanCards([]);
         }
       });
     });
 
-    // Broker tín hiệu WebRTC thoại
-    newSocket.on('webrtc-signal', (data: { senderSocketId: string; signalData: any }) => {
-      const { senderSocketId, signalData } = data;
-      let pc = peerConnections.current[senderSocketId];
-
-      if (!pc) return;
-
-      if (signalData.offer) {
-        pc.setRemoteDescription(new RTCSessionDescription(signalData.offer)).then(() => {
-          pc.createAnswer().then((answer) => {
-            pc.setLocalDescription(answer).then(() => {
-              newSocket.emit('webrtc-signal', {
-                targetSocketId: senderSocketId,
-                signalData: { answer },
-              });
-            });
-          });
-        });
-      } else if (signalData.answer) {
-        pc.setRemoteDescription(new RTCSessionDescription(signalData.answer));
-      } else if (signalData.candidate) {
-        pc.addIceCandidate(new RTCIceCandidate(signalData.candidate));
-      }
-    });
-
-    // Chỉ báo nói chuyện
-    newSocket.on('speaking-state', (data: { socketId: string; isSpeaking: boolean }) => {
-      setSpeakingPeers((prev) => ({
-        ...prev,
-        [data.socketId]: data.isSpeaking,
-      }));
-    });
-
-    // Đồng bộ Tarot Board từ Reader
-    newSocket.on('draw-action', (action: any) => {
-      if (action.type === 'mixing') {
-        setPhase('mixing');
-        setDrawn([null, null, null, null, null]);
-        setReversed([false, false, false, false, false]);
-        setRevealed([false, false, false, false, false]);
-      } else if (action.type === 'fanout') {
-        setPhase('fanout');
-        setFanCards(action.fanCards);
-      } else if (action.type === 'place_card') {
-        setDrawn((prev) => {
-          const next = [...prev];
-          next[action.slotIndex] = action.card;
-          return next;
-        });
-        setReversed((prev) => {
-          const next = [...prev];
-          next[action.slotIndex] = action.isReversed;
-          return next;
-        });
-      } else if (action.type === 'reveal_card') {
-        setRevealed((prev) => {
-          const next = [...prev];
-          next[action.slotIndex] = !next[action.slotIndex];
-          return next;
-        });
-      } else if (action.type === 'reset') {
-        setPhase('idle');
-        setDrawn([null, null, null, null, null]);
-        setReversed([false, false, false, false, false]);
-        setRevealed([false, false, false, false, false]);
-        setFanCards([]);
-      }
-    });
-
     return () => {
-      newSocket.disconnect();
+      if (activeSocket) (activeSocket as Socket).disconnect();
       if (speakingIntervalRef.current) clearInterval(speakingIntervalRef.current);
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => track.stop());
       }
       Object.values(peerConnections.current).forEach((pc) => pc.close());
+      peerConnections.current = {};
+      
+      // Xóa toàn bộ audio elements khỏi DOM
+      Object.values(audioElements.current).forEach((audio) => audio.remove());
+      audioElements.current = {};
     };
   }, [roomId, createPeerConnection, addSystemMessage]);
 
