@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import io, { Socket } from 'socket.io-client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, MicOff, Shield, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Mic, MicOff, Shield, ArrowLeft, RefreshCw, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CardBack } from '@/components/reading/CardBack';
 import { CardFlip } from '@/components/reading/CardFlip';
@@ -34,6 +34,7 @@ export default function RoomClient({ roomId, cards }: RoomClientProps) {
   const [speakingPeers, setSpeakingPeers] = useState<Record<string, boolean>>({});
   const [errorMsg, setErrorMsg] = useState('');
   const [sysMessages, setSysMessages] = useState<string[]>([]);
+  const [allowedPickerSocketId, setAllowedPickerSocketId] = useState<string | null>(null);
 
   // Trạng thái Tarot Board
   const [phase, setPhase] = useState<'idle' | 'mixing' | 'fanout' | 'revealed'>('idle');
@@ -52,6 +53,7 @@ export default function RoomClient({ roomId, cards }: RoomClientProps) {
   // Lấy ra vai trò hiện tại của Client
   const currentParticipant = participants.find((p) => p.socketId === socket?.id);
   const isHost = currentParticipant?.isHost || false;
+  const isAllowedToDraw = isHost || socket?.id === allowedPickerSocketId;
 
   // Xác định vị trí slot trống kế tiếp
   const activeSlotIndex = drawn.findIndex((d) => d === null);
@@ -182,7 +184,7 @@ export default function RoomClient({ roomId, cards }: RoomClientProps) {
 
   // Trộn bài (Host điều khiển)
   const handleMixClick = () => {
-    if (!isHost) return;
+    if (!isAllowedToDraw) return;
 
     if (phase === 'idle' || phase === 'revealed') {
       // Bắt đầu xào bài
@@ -202,7 +204,7 @@ export default function RoomClient({ roomId, cards }: RoomClientProps) {
 
   // Chọn bài từ quạt bài (Host điều khiển)
   const handleSelectCard = (card: TarotCard) => {
-    if (!isHost || allDrawn || phase !== 'fanout') return;
+    if (!isAllowedToDraw || allDrawn || phase !== 'fanout') return;
 
     const isAlreadyPlaced = drawn.some((d) => d?.id === card.id);
     if (isAlreadyPlaced) return;
@@ -231,7 +233,7 @@ export default function RoomClient({ roomId, cards }: RoomClientProps) {
 
   // Lật ngửa bài (Host điều khiển)
   const handleFlipCard = (index: number) => {
-    if (!isHost || !drawn[index]) return;
+    if (!isAllowedToDraw || !drawn[index]) return;
 
     setRevealed((prev) => {
       const next = [...prev];
@@ -247,7 +249,7 @@ export default function RoomClient({ roomId, cards }: RoomClientProps) {
 
   // Reset trải bài (Host điều khiển)
   const handleReset = () => {
-    if (!isHost) return;
+    if (!isAllowedToDraw) return;
 
     setPhase('idle');
     setDrawn([null, null, null, null, null]);
@@ -281,6 +283,10 @@ export default function RoomClient({ roomId, cards }: RoomClientProps) {
 
     newSocket.on('sys-message', (data: { type: string; message: string }) => {
       addSystemMessage(data.message);
+    });
+
+    newSocket.on('picker-delegated', (data: { allowedSocketId: string | null }) => {
+      setAllowedPickerSocketId(data.allowedSocketId);
     });
 
     // Cập nhật danh sách người tham gia & Setup WebRTC đàm thoại
@@ -447,9 +453,9 @@ export default function RoomClient({ roomId, cards }: RoomClientProps) {
             {drawn.map((card, i) => (
               <div key={i} className="flex flex-col items-center gap-2">
                 <div
-                  onClick={() => i < 5 && handleFlipCard(i)}
+                  onClick={() => i < 5 && isAllowedToDraw && handleFlipCard(i)}
                   className={`relative flex h-[var(--card-h)] w-[var(--card-w)] items-center justify-center rounded-2xl border border-dashed border-ink/20 bg-cream/10 transition-all ${
-                    card ? 'cursor-pointer hover:scale-105' : ''
+                    card && isAllowedToDraw ? 'cursor-pointer hover:scale-105' : ''
                   }`}
                   style={{
                     boxShadow: revealed[i] ? '0 8px 24px rgba(62,66,88,0.1)' : 'none',
@@ -482,7 +488,7 @@ export default function RoomClient({ roomId, cards }: RoomClientProps) {
 
           {/* Khu vực xào bài hoặc quạt bài xòe ra */}
           <div className="relative w-full h-[220px] flex items-center justify-center border-t border-ink/5 pt-4">
-            {isHost ? (
+            {isAllowedToDraw ? (
               <>
                 {phase === 'idle' && (
                   <div
@@ -566,7 +572,9 @@ export default function RoomClient({ roomId, cards }: RoomClientProps) {
                 </p>
                 {phase === 'mixing' && (
                   <p className="text-[10px] font-bold text-ink/40 tracking-wider uppercase mt-4 animate-pulse">
-                    Reader đang xào bài...
+                    {allowedPickerSocketId
+                      ? `${participants.find((p) => p.socketId === allowedPickerSocketId)?.nickname || 'Querent'} đang xào bài...`
+                      : 'Reader đang xào bài...'}
                   </p>
                 )}
               </div>
@@ -637,9 +645,14 @@ export default function RoomClient({ roomId, cards }: RoomClientProps) {
                       </div>
                       
                       <div>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-sm font-bold text-ink">{peer.nickname}</span>
                           {peer.isHost && <span className="text-[9px] bg-ink/10 text-ink/75 font-bold px-1.5 py-0.5 rounded">host</span>}
+                          {allowedPickerSocketId === peer.socketId && (
+                            <span className="text-[9px] bg-green-100 text-green-700 font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5 animate-pulse">
+                              <Sparkles className="h-2.5 w-2.5" /> Bốc bài
+                            </span>
+                          )}
                         </div>
                         <span className="text-[10px] text-ink/50 tracking-wider uppercase font-semibold">
                           {peer.isMuted ? 'Đang tắt mic' : 'Đang mở mic'}
@@ -648,7 +661,23 @@ export default function RoomClient({ roomId, cards }: RoomClientProps) {
 
                     </div>
 
-                    <div>
+                    <div className="flex items-center gap-2">
+                      {isHost && !peer.isHost && (
+                        <button
+                          onClick={() => {
+                            const target = allowedPickerSocketId === peer.socketId ? null : peer.socketId;
+                            socket?.emit('delegate-picker', { targetSocketId: target });
+                          }}
+                          className={`text-[9px] font-bold px-2 py-0.5 rounded transition-all border ${
+                            allowedPickerSocketId === peer.socketId
+                              ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'
+                              : 'bg-cream hover:bg-ink/5 text-ink/70 border-ink/10'
+                          }`}
+                        >
+                          {allowedPickerSocketId === peer.socketId ? 'Thu hồi' : 'Cho bốc'}
+                        </button>
+                      )}
+
                       {peer.isMuted ? (
                         <MicOff className="h-4 w-4 text-red-400" />
                       ) : (

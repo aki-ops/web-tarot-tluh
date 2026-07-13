@@ -27,8 +27,8 @@ export class RoomsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  // Quản lý các phòng thoại trong bộ nhớ đệm
   private activeRooms: Map<string, Participant[]> = new Map();
+  private allowedPickers: Map<string, string | null> = new Map();
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -44,9 +44,17 @@ export class RoomsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (roomCode && this.activeRooms.has(roomCode)) {
       let participants = this.activeRooms.get(roomCode) || [];
       participants = participants.filter((p) => p.socketId !== client.id);
+
+      // Thu hồi quyền bốc bài nếu người được ủy quyền rời phòng
+      const allowedPicker = this.allowedPickers.get(roomCode);
+      if (allowedPicker === client.id) {
+        this.allowedPickers.delete(roomCode);
+        this.server.to(roomCode).emit('picker-delegated', { allowedSocketId: null });
+      }
       
       if (participants.length === 0) {
         this.activeRooms.delete(roomCode);
+        this.allowedPickers.delete(roomCode);
       } else {
         this.activeRooms.set(roomCode, participants);
         this.server.to(roomCode).emit('room-state', participants);
@@ -185,7 +193,7 @@ export class RoomsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
   }
 
-  // Đồng bộ hoá thao tác bốc bài Tarot từ Reader (Host)
+  // Đồng bộ hoá thao tác bốc bài Tarot từ Reader (Host) hoặc người được chỉ định
   @SubscribeMessage('draw-action')
   async handleDrawAction(client: Socket, payload: any) {
     const roomCode = client.data.roomCode;
@@ -193,10 +201,47 @@ export class RoomsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     const participants = this.activeRooms.get(roomCode) || [];
     const sender = participants.find((p) => p.socketId === client.id);
+    const allowedPicker = this.allowedPickers.get(roomCode);
 
-    // Chỉ chủ phòng (Host) mới được thực hiện xào/bốc/lật bài
-    if (sender && sender.isHost) {
+    // Chỉ chủ phòng (Host) hoặc Picker được chỉ định mới được thực hiện xào/bốc/lật bài
+    if (sender && (sender.isHost || client.id === allowedPicker)) {
       client.to(roomCode).emit('draw-action', payload);
+    }
+  }
+
+  // Cấp hoặc thu hồi quyền bốc bài (Chỉ Host thực hiện)
+  @SubscribeMessage('delegate-picker')
+  handleDelegatePicker(client: Socket, payload: { targetSocketId: string | null }) {
+    const roomCode = client.data.roomCode;
+    if (!roomCode || !this.activeRooms.has(roomCode)) return;
+
+    const participants = this.activeRooms.get(roomCode) || [];
+    const sender = participants.find((p) => p.socketId === client.id);
+
+    if (sender && sender.isHost) {
+      if (payload.targetSocketId) {
+        this.allowedPickers.set(roomCode, payload.targetSocketId);
+      } else {
+        this.allowedPickers.delete(roomCode);
+      }
+
+      // Phát cho cả phòng
+      this.server.to(roomCode).emit('picker-delegated', {
+        allowedSocketId: payload.targetSocketId,
+      });
+
+      // Tạo tin nhắn hệ thống
+      let msg = 'Chủ phòng đã thu hồi quyền bốc bài.';
+      if (payload.targetSocketId) {
+        const target = participants.find((p) => p.socketId === payload.targetSocketId);
+        if (target) {
+          msg = `Chủ phòng đã cấp quyền bốc bài cho ${target.nickname}.`;
+        }
+      }
+      this.server.to(roomCode).emit('sys-message', {
+        type: 'info',
+        message: msg,
+      });
     }
   }
 }
